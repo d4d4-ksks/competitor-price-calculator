@@ -1,0 +1,5 @@
+.competitor-link.is-alternate{font-style:italic}
+.pi-badge{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:24px;padding:0 8px;border:1px solid;border-radius:4px;font-size:12px;line-height:16px}
+.pi-badge.success{background:#edf9ed;border-color:#78c878;color:#287329}
+.pi-badge.warning{background:#fff4ce;border-color:#d6a839;color:#7e5112}
+.pi-badge.danger{background:#fff0ef;border-color:#ff8b85;color:#b42318}
