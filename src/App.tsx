@@ -1,95 +1,46 @@
-import { useMemo, useState } from 'react'
-import {
-  Boxes, BriefcaseBusiness, Calculator, ChevronDown, ChevronLeft, ChevronRight,
-  CircleGauge, Download, Filter, Gift, LayoutGrid, MapPin, Menu, Pencil,
-  Percent, Sparkles, Truck, Upload, X,
-} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BriefcaseBusiness, Calculator, ChevronDown, ChevronLeft, ChevronRight, Download, Filter, Gift, LayoutGrid, MapPin, Pencil, Percent, Sparkles, Truck, Upload, X } from 'lucide-react'
 
-type Row = {
-  product: string; regular: number; competitorRegular: number; promo: number;
-  competitorPromo: number; pi: string; discount: number; city: string; stores: number;
-}
+type Tier = 0 | 1 | 2
+type Row = { id:number; product:string; regular:number; regularCompetitors:[number,number,number]; regularTier:Tier; promo:number; promoCompetitors:[number,number,number]; promoTier:Tier; discount:number; city:string; stores:number; category:string; supplier:string; edited?:boolean }
 
-const rows: Row[] = [
-  { product: 'Колбаса вареная Папа может сочная, 400 г', regular: 290, competitorRegular: 285, promo: 225, competitorPromo: 216, pi: '1,04', discount: 22, city: 'Москва', stores: 296 },
-  { product: 'Колбаса вареная Сагуны Эстонская 250 г', regular: 219, competitorRegular: 220, promo: 145, competitorPromo: 136, pi: '1,07', discount: 33, city: 'Москва', stores: 296 },
-  { product: 'Колбаса вареная Клинский Молочная нарезка, 190 г', regular: 449, competitorRegular: 420, promo: 275, competitorPromo: 259, pi: '1,06', discount: 38, city: 'Москва', stores: 296 },
-  { product: 'Колбаса вареная Окраина Докторская 400 г', regular: 479, competitorRegular: 260, promo: 385, competitorPromo: 334, pi: '1,15', discount: 19, city: 'Москва', stores: 296 },
+const initialRows: Row[] = [
+  { id:1, product:'Колбаса вареная Папа может сочная, 400 г', regular:290, regularCompetitors:[285,292,299], regularTier:0, promo:225, promoCompetitors:[216,220,224], promoTier:0, discount:22, city:'Москва', stores:296, category:'Колбаса', supplier:'ООО Антарктида' },
+  { id:2, product:'Колбаса вареная Сагуны Эстонская 250 г', regular:219, regularCompetitors:[220,225,231], regularTier:0, promo:145, promoCompetitors:[136,140,139], promoTier:0, discount:33, city:'Москва', stores:296, category:'Колбаса', supplier:'ООО Антарктида' },
+  { id:3, product:'Колбаса вареная Клинский Молочная нарезка, 190 г', regular:449, regularCompetitors:[420,432,445], regularTier:0, promo:275, promoCompetitors:[259,268,276], promoTier:0, discount:38, city:'Москва', stores:296, category:'Колбаса', supplier:'ООО Антарктида' },
+  { id:4, product:'Колбаса вареная Окраина Докторская 400 г', regular:479, regularCompetitors:[260,275,289], regularTier:0, promo:385, promoCompetitors:[334,346,359], promoTier:0, discount:19, city:'Москва', stores:296, category:'Колбаса', supplier:'ООО Антарктида' },
 ]
+const nav = [[LayoutGrid,'Рабочее место'],[Truck,'Поставщики'],[BriefcaseBusiness,'Заявки'],[Sparkles,'Кампании'],[MapPin,'Кластеры'],[Percent,'Параметры скидок'],[Calculator,'Калькулятор промо'],[Gift,'Промо']] as const
+const filters = ['Товар','География','Категория 4','Поставщик','Маржа товара акц.','Сеть','PI']
+const tierLabel = (tier:Tier) => `${tier + 1} эшелон`
+const piFor = (row:Row) => (row.promo / row.promoCompetitors[row.promoTier]).toFixed(2).replace('.', ',')
+const discountFor = (regular:number, promo:number) => Math.max(0, Math.round((1 - promo / regular) * 100))
 
-const nav = [
-  [LayoutGrid, 'Рабочее место'], [Truck, 'Поставщики'], [BriefcaseBusiness, 'Заявки'],
-  [Sparkles, 'Кампании'], [MapPin, 'Кластеры'], [Percent, 'Параметры скидок'],
-  [Calculator, 'Калькулятор промо'], [Gift, 'Промо'],
-] as const
+function Sidebar(){return <aside className="sidebar"><div className="brand"><span className="brand-mark"><span/></span><b>Промотрон</b></div><nav>{nav.map(([Icon,label])=><button className={label==='Калькулятор промо'?'active':''} key={label}><Icon size={16}/><span>{label}</span></button>)}</nav><div className="account"><span>eaterekhova@ecom.tech</span><ChevronLeft size={16}/></div></aside>}
 
-const filters = ['Товар', 'География', 'Категория 4', 'Поставщик', 'Маржа товара акц.', 'Сеть', 'PI']
-
-function Sidebar() {
-  return <aside className="sidebar">
-    <div className="brand"><span className="brand-mark"><span /></span><b>Промотрон</b></div>
-    <nav>{nav.map(([Icon, label]) => <button className={label === 'Калькулятор промо' ? 'active' : ''} key={label}><Icon size={17}/><span>{label}</span></button>)}</nav>
-    <div className="account"><span>eaterekhova@ecom.tech</span><ChevronLeft size={16}/></div>
-  </aside>
+function CompetitorDropdown({row,kind,onChoose,onDetails,onClose}:{row:Row;kind:'regular'|'promo';onChoose:(tier:Tier)=>void;onDetails:()=>void;onClose:()=>void}){
+  const ref=useRef<HTMLDivElement>(null); const values=kind==='regular'?row.regularCompetitors:row.promoCompetitors; const selected=kind==='regular'?row.regularTier:row.promoTier
+  useEffect(()=>{const close=(event:MouseEvent)=>{if(!ref.current?.contains(event.target as Node))onClose()};window.addEventListener('mousedown',close);return()=>window.removeEventListener('mousedown',close)},[onClose])
+  return <div className="competitor-dropdown" ref={ref} role="menu">{values.map((value,index)=><button key={index} className={selected===index?'selected':''} onClick={()=>onChoose(index as Tier)}>{value} ₽&nbsp;&nbsp;{tierLabel(index as Tier)}</button>)}<div className="dropdown-footer"><button onClick={onDetails}>Подробнее</button></div></div>
 }
 
-function EditPanel({ row, onClose }: { row: Row; onClose: () => void }) {
-  const [tab, setTab] = useState<'manual' | 'competitors'>('manual')
-  const [regular, setRegular] = useState(String(row.regular))
-  const [promo, setPromo] = useState(String(row.promo))
-  return <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
-    <section className="drawer">
-      <header><div><span className="eyebrow">Редактирование параметров</span><h2>{row.product}</h2></div><button aria-label="Закрыть" onClick={onClose}><X size={22}/></button></header>
-      <div className="drawer-tabs">
-        <button className={tab === 'manual' ? 'active' : ''} onClick={() => setTab('manual')}>Ручное редактирование</button>
-        <button className={tab === 'competitors' ? 'active' : ''} onClick={() => setTab('competitors')}>Расчёт под конкурентов</button>
-      </div>
-      <div className="drawer-body">
-        {tab === 'manual' ? <>
-          <h3>Цена и параметры промо</h3>
-          <div className="field-grid">
-            <label>Цена полки рег., ₽<input value={regular} onChange={e => setRegular(e.target.value)}/></label>
-            <label>Цена полки акц., ₽<input value={promo} onChange={e => setPromo(e.target.value)}/></label>
-            <label>Скидка, %<input value={row.discount} readOnly/></label>
-            <label>Коэффициент эластичности<input defaultValue="1,5"/></label>
-          </div>
-          <h3>Закупочные цены</h3>
-          <div className="field-grid"><label>Цена закупки рег., ₽<input defaultValue="200"/></label><label>Цена закупки акц., ₽<input defaultValue="190"/></label></div>
-        </> : <>
-          <div className="info">Укажите ценовой эшелон и позицию относительно конкурентов — промо-цена рассчитается автоматически.</div>
-          <h3>Регулярная цена</h3>
-          <label>Ценовой эшелон<select defaultValue="1"><option value="1">1 эшелон</option><option value="2">2 эшелон</option><option value="3">3 эшелон</option></select></label>
-          <div className="comparison"><span>Цена конкурента</span><b>{row.competitorRegular} ₽</b></div>
-          <h3>Промо-цена</h3>
-          <label>Ценовой эшелон<select defaultValue="1"><option value="1">1 эшелон</option><option value="2">2 эшелон</option><option value="3">3 эшелон</option></select></label>
-          <div className="comparison"><span>Цена конкурента</span><b>{row.competitorPromo} ₽</b></div>
-        </>}
-      </div>
-      <footer><button className="secondary" onClick={onClose}>Отменить</button><button className="primary" onClick={onClose}>Сохранить</button></footer>
-    </section>
-  </div>
+type EditTarget={ids:number[];initialTab?:'manual'|'competitors'}
+function EditPanel({rows,target,onClose,onSave}:{rows:Row[];target:EditTarget;onClose:()=>void;onSave:(ids:number[],changes:Partial<Row>|{competitorTier:Tier;targetPi:number})=>void}){
+  const targetRows=rows.filter(row=>target.ids.includes(row.id)); const row=targetRows[0]; const bulk=targetRows.length>1
+  const [tab,setTab]=useState<'manual'|'competitors'>(target.initialTab??'manual'); const [regular,setRegular]=useState(bulk?'':String(row.regular)); const [promo,setPromo]=useState(bulk?'':String(row.promo)); const [discount,setDiscount]=useState(bulk?'':String(row.discount)); const [tier,setTier]=useState<Tier>(0); const [targetPi,setTargetPi]=useState('1,05')
+  const save=()=>{if(tab==='competitors')onSave(target.ids,{competitorTier:tier,targetPi:Number(targetPi.replace(',','.'))||1});else{const changes:Partial<Row>={};if(regular)changes.regular=Number(regular);if(promo)changes.promo=Number(promo);if(discount)changes.discount=Number(discount);onSave(target.ids,changes)}onClose()}
+  return <div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="drawer" aria-label="Редактирование параметров"><header><h2>{bulk?`Редактирование ${targetRows.length} промо`:row.product}</h2><button aria-label="Закрыть" onClick={onClose}><X size={19}/></button></header><div className="drawer-tabs"><button className={tab==='manual'?'active':''} onClick={()=>setTab('manual')}>Ручное редактирование</button><button className={tab==='competitors'?'active':''} onClick={()=>setTab('competitors')}>Расчёт под конкурентов</button></div><div className="drawer-body">{tab==='manual'?<div className="field-grid"><Field label="Цена полки акц." value={promo} onChange={setPromo} placeholder={bulk?'Разные':''} postfix="₽"/><Field label="Скидка" value={discount} onChange={setDiscount} placeholder={bulk?'Разные':''} postfix="%"/><Field label="Цена полки рег." value={regular} onChange={setRegular} placeholder={bulk?'Разные':''} postfix="₽"/><Field label="Цена закупки акц." value="150" postfix="₽"/><Field label="Цена закупки рег." value="100" postfix="₽"/><Field label="Коэффициент эластичности" value="1,5"/><Field label="Количество ЦФЗ" value={String(row.stores)}/></div>:<><div className="info"><b>i</b><span>Акционные цены будут пересчитаны в зависимости от указанного PI после сохранения</span></div><div className="field-grid compact"><label>Конкуренты<select value={tier} onChange={e=>setTier(Number(e.target.value) as Tier)}><option value={0}>1 эшелон</option><option value={1}>2 эшелон</option><option value={2}>3 эшелон</option></select></label><Field label="PI" value={targetPi} onChange={setTargetPi}/></div></>}</div><footer><button className="secondary" onClick={onClose}>Отменить</button><button className="primary" onClick={save}>Сохранить</button></footer></section></div>
 }
 
-export function App() {
-  const [scope, setScope] = useState<'cities' | 'network'>('cities')
-  const [selected, setSelected] = useState<Row | null>(null)
-  const [query, setQuery] = useState('')
-  const visibleRows = useMemo(() => rows.filter(r => r.product.toLowerCase().includes(query.toLowerCase())), [query])
-  return <div className="app">
-    <Sidebar />
-    <main>
-      <div className="topbar"><h1>Калькулятор параметров промо</h1><button className="upload"><Upload size={18}/>Загрузить шаблон для расчёта</button></div>
-      <div className="scope-tabs"><button className={scope === 'cities' ? 'active' : ''} onClick={() => setScope('cities')}>По городам</button><button className={scope === 'network' ? 'active' : ''} onClick={() => setScope('network')}>Сеть</button></div>
-      <section className="card">
-        <div className="card-title"><b>Параметры промо</b><div className="actions"><button className="icon-button"><Filter size={18}/></button><button><Download size={18}/>Скачать {scope === 'cities' ? '(с разбивкой по городам)' : '(по сети)'}</button><button className="chevron"><ChevronDown size={17}/></button></div></div>
-        <div className="filter-row">{filters.map((f, i) => <button key={f} className={i === 0 && query ? 'selected' : ''} onClick={() => i === 0 && setQuery(query ? '' : 'Папа')}>{f}<ChevronDown size={15}/></button>)}</div>
-        <div className="table-scroll"><table>
-          <thead><tr><th className="check"><input type="checkbox"/></th><th className="product">Товар</th><th>Цена полки рег., ₽</th><th>Конкуренты рег., ₽</th><th>Цена полки акц., ₽</th><th>Конкуренты акц., ₽</th><th>PI</th><th>Скидка, %</th><th>География</th><th>Кол-во ЦФЗ</th><th>Категория 4</th><th>Поставщик</th></tr></thead>
-          <tbody>{visibleRows.map(row => <tr key={row.product}><td className="check"><input type="checkbox"/></td><td className="product">{row.product}</td><td>{row.regular}<button className="edit" aria-label={`Редактировать ${row.product}`} onClick={() => setSelected(row)}><Pencil size={17}/></button></td><td><a>{row.competitorRegular}</a> <small>1 эшелон</small></td><td>{row.promo}<button className="edit" onClick={() => setSelected(row)}><Pencil size={17}/></button></td><td><a>{row.competitorPromo}</a> <small>1 эшелон</small></td><td>{row.pi}</td><td>{row.discount}</td><td>{row.city}</td><td>{row.stores}</td><td>Колбаса</td><td>ООО Антарктида</td></tr>)}</tbody>
-        </table></div>
-        <div className="pagination"><span>1–{visibleRows.length} из {visibleRows.length}</span><div><ChevronLeft size={17}/><b>1</b><ChevronRight size={17}/></div></div>
-      </section>
-    </main>
-    {selected && <EditPanel row={selected} onClose={() => setSelected(null)}/>} 
-  </div>
+function Field({label,value,onChange,placeholder='',postfix}:{label:string;value:string;onChange?:(value:string)=>void;placeholder?:string;postfix?:string}){return <label>{label}<span className="input-wrap"><input value={onChange?value:undefined} defaultValue={onChange?undefined:value} placeholder={placeholder} onChange={e=>onChange?.(e.target.value)}/>{postfix&&<i>{postfix}</i>}</span></label>}
+
+export function App(){
+  const [rows,setRows]=useState(initialRows); const [scope,setScope]=useState<'cities'|'network'>('cities'); const [selectedIds,setSelectedIds]=useState<number[]>([]); const [editTarget,setEditTarget]=useState<EditTarget|null>(null); const [dropdown,setDropdown]=useState<{rowId:number;kind:'regular'|'promo'}|null>(null); const [query,setQuery]=useState('')
+  const visibleRows=useMemo(()=>rows.filter(r=>r.product.toLowerCase().includes(query.toLowerCase())),[rows,query]); const allSelected=visibleRows.length>0&&visibleRows.every(row=>selectedIds.includes(row.id))
+  const toggleRow=(id:number)=>setSelectedIds(ids=>ids.includes(id)?ids.filter(item=>item!==id):[...ids,id]); const toggleAll=()=>setSelectedIds(allSelected?[]:visibleRows.map(row=>row.id))
+  const updateTier=(rowId:number,kind:'regular'|'promo',tier:Tier)=>{setRows(current=>current.map(row=>row.id===rowId?{...row,[kind==='regular'?'regularTier':'promoTier']:tier,edited:true}:row));setDropdown(null)}
+  const saveChanges=(ids:number[],changes:Partial<Row>|{competitorTier:Tier;targetPi:number})=>setRows(current=>current.map(row=>{if(!ids.includes(row.id))return row;if('competitorTier'in changes){const promo=Math.round(row.promoCompetitors[changes.competitorTier]*changes.targetPi);return{...row,promoTier:changes.competitorTier,promo,discount:discountFor(row.regular,promo),edited:true}}const next={...row,...changes,edited:true};if(changes.promo!==undefined||changes.regular!==undefined)next.discount=changes.discount??discountFor(next.regular,next.promo);return next}))
+  return <div className="app"><Sidebar/><main><div className="topbar"><h1>Калькулятор параметров промо</h1><button className="upload"><Upload size={18}/>Загрузить шаблон для расчёта</button></div><div className="scope-tabs"><button className={scope==='cities'?'active':''} onClick={()=>setScope('cities')}>По городам</button><button className={scope==='network'?'active':''} onClick={()=>setScope('network')}>Сеть</button></div><section className="card"><div className="card-title"><b>Параметры промо</b><div className="actions"><button className="icon-button" aria-label="Фильтры"><Filter size={18}/></button><button><Download size={18}/>Скачать {scope==='cities'?'(с разбивкой по городам)':'(по сети)'}</button><button className="chevron"><ChevronDown size={17}/></button></div></div><div className="filter-row">{filters.map((f,i)=><button key={f} className={i===0&&query?'selected':''} onClick={()=>i===0&&setQuery(query?'':'Папа')}>{f}<ChevronDown size={15}/></button>)}</div><div className="table-scroll"><table><colgroup><col className="col-check"/><col className="col-status"/><col className="col-product"/><col className="col-price"/><col className="col-compet"/><col className="col-price"/><col className="col-compet"/><col className="col-pi"/><col className="col-discount"/><col className="col-geo"/><col className="col-stores"/><col className="col-category"/><col className="col-supplier"/><col className="col-period"/></colgroup><thead><tr><th className="sticky-1 check"><input aria-label="Выбрать все строки" type="checkbox" checked={allSelected} onChange={toggleAll}/></th><th className="sticky-2 status"/><th className="sticky-3 product">Товар</th><th>Цена полки рег., ₽</th><th>Конкуренты рег., ₽</th><th>Цена полки акц., ₽</th><th>Конкуренты акц., ₽</th><th>PI</th><th>Скидка, %</th><th>География</th><th>Кол-во ЦФЗ</th><th>Категория 4</th><th>Поставщик</th><th>Период промо</th></tr></thead><tbody>{visibleRows.map(row=><tr key={row.id} className={selectedIds.includes(row.id)?'is-selected':''}><td className="sticky-1 check"><input aria-label={`Выбрать ${row.product}`} type="checkbox" checked={selectedIds.includes(row.id)} onChange={()=>toggleRow(row.id)}/></td><td className="sticky-2 status">{row.edited&&<span title="Изменено">●</span>}</td><td className="sticky-3 product" title={row.product}>{row.product}</td><td className="editable-cell"><span>{row.regular}</span><button className="edit" aria-label={`Редактировать ${row.product}`} onClick={()=>setEditTarget({ids:[row.id]})}><Pencil size={16}/></button></td><td className="competitor-cell"><CompetitorValue row={row} kind="regular" dropdown={dropdown} setDropdown={setDropdown} updateTier={updateTier} openDetails={()=>setEditTarget({ids:[row.id],initialTab:'competitors'})}/></td><td className="editable-cell"><span>{row.promo}</span><button className="edit" aria-label={`Редактировать акционную цену ${row.product}`} onClick={()=>setEditTarget({ids:[row.id]})}><Pencil size={16}/></button></td><td className="competitor-cell"><CompetitorValue row={row} kind="promo" dropdown={dropdown} setDropdown={setDropdown} updateTier={updateTier} openDetails={()=>setEditTarget({ids:[row.id],initialTab:'competitors'})}/></td><td>{piFor(row)}</td><td>{row.discount}</td><td>{row.city}</td><td>{row.stores}</td><td>{row.category}</td><td>{row.supplier}</td><td>27.02.25 — 08.03.25</td></tr>)}</tbody></table></div><div className="pagination"><span>1–{visibleRows.length} из {visibleRows.length}</span><div><ChevronLeft size={17}/><b>1</b><ChevronRight size={17}/></div></div></section></main>{selectedIds.length>0&&!editTarget&&<div className="bulk-bar"><b>Выбрано: {selectedIds.length}</b><button onClick={()=>setEditTarget({ids:selectedIds})}>Редактировать параметры</button><button className="bulk-close" aria-label="Снять выделение" onClick={()=>setSelectedIds([])}><X size={18}/></button></div>}{editTarget&&<EditPanel rows={rows} target={editTarget} onClose={()=>setEditTarget(null)} onSave={saveChanges}/>}</div>
 }
+
+function CompetitorValue({row,kind,dropdown,setDropdown,updateTier,openDetails}:{row:Row;kind:'regular'|'promo';dropdown:{rowId:number;kind:'regular'|'promo'}|null;setDropdown:(value:{rowId:number;kind:'regular'|'promo'}|null)=>void;updateTier:(rowId:number,kind:'regular'|'promo',tier:Tier)=>void;openDetails:()=>void}){const tier=kind==='regular'?row.regularTier:row.promoTier;const values=kind==='regular'?row.regularCompetitors:row.promoCompetitors;const open=dropdown?.rowId===row.id&&dropdown.kind===kind;return <><button className="competitor-link" onClick={()=>setDropdown(open?null:{rowId:row.id,kind})}>{values[tier]}</button><small>{tierLabel(tier)}</small>{open&&<CompetitorDropdown row={row} kind={kind} onChoose={next=>updateTier(row.id,kind,next)} onDetails={openDetails} onClose={()=>setDropdown(null)}/>}</>}
