@@ -19,7 +19,7 @@ const piFor = (row:Row) => (row.promo / row.promoCompetitors[row.promoTier]).toF
 const piTone = (value:string) => { const numeric=Number(value.replace(',','.')); return numeric<=1.05?'success':numeric<1.15?'warning':'danger' }
 const discountFor = (regular:number, promo:number) => Math.max(0, Math.round((1 - promo / regular) * 100))
 
-function Sidebar(){return <aside className="sidebar"><div className="brand"><span className="brand-mark"><span/></span><b>Промотрон</b></div><nav>{nav.map(([Icon,label])=><button className={label==='Калькулятор промо'?'active':''} key={label}><Icon size={16}/><span>{label}</span></button>)}</nav><div className="account"><span>eaterekhova@ecom.tech</span><ChevronLeft size={16}/></div></aside>}
+function Sidebar(){return <aside className="sidebar"><div className="brand"><img className="brand-logo" src="./logo.svg" alt="Промотрон"/><b>Промотрон</b></div><nav>{nav.map(([Icon,label])=><button className={label==='Калькулятор промо'?'active':''} key={label}><Icon size={16}/><span>{label}</span></button>)}</nav><div className="account"><span>eaterekhova@ecom.tech</span><ChevronLeft size={16}/></div></aside>}
 
 function CompetitorDropdown({row,kind,onChoose,onDetails,onClose}:{row:Row;kind:'regular'|'promo';onChoose:(tier:Tier)=>void;onDetails:()=>void;onClose:()=>void}){
   const ref=useRef<HTMLDivElement>(null); const values=kind==='regular'?row.regularCompetitors:row.promoCompetitors; const selected=kind==='regular'?row.regularTier:row.promoTier
