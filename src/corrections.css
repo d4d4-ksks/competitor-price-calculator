@@ -3,3 +3,16 @@
 .pi-badge.success{background:#edf9ed;border-color:#78c878;color:#287329}
 .pi-badge.warning{background:#fff4ce;border-color:#d6a839;color:#7e5112}
 .pi-badge.danger{background:#fff0ef;border-color:#ff8b85;color:#b42318}
+.bulk-title>b{font-size:18px;font-weight:600}
+.bulk-edit{height:44px;border:0;border-radius:8px;padding:0 20px;background:#0072e5;color:#fff;display:flex;align-items:center;gap:9px;cursor:pointer;font-size:16px}
+.drawer-body input::placeholder{color:#adafb1;opacity:1}
+.details-drawer header{height:auto;min-height:88px;padding:28px 32px 20px;border-bottom:1px solid #e1e2e3;align-items:flex-start}
+.details-drawer header h2{font-size:24px;line-height:32px;max-width:455px;white-space:nowrap}
+.details-body{padding:16px 32px;overflow:auto}
+.tier-card{border:1px solid #d4d5d6;border-radius:12px;overflow:hidden;margin-bottom:16px}
+.tier-summary,.competitor-row{height:48px;padding:0 16px;display:grid;grid-template-columns:1.3fr 1.15fr 1.15fr 1fr;align-items:center;column-gap:12px}
+.tier-summary{background:#f4f4f4;color:#585a5c}
+.tier-summary strong{color:#7e5112;font-size:16px}
+.competitor-row{border-top:1px solid #e1e2e3}
+.competitor-row .pi-badge{justify-self:start}
+.history-button{height:40px;border:1px solid #0072e5;border-radius:8px;background:#fff;color:#0072e5;padding:0 16px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
