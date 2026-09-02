@@ -20,3 +20,6 @@
 .competitor-row .pi-badge{justify-self:start}
 .history-button{height:40px;border:1px solid #0072e5;border-radius:8px;background:#fff;color:#0072e5;padding:0 16px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}
 .brand-logo{display:block;width:48px;height:48px;flex:0 0 48px}
+.competitor-price-type{margin-left:5px;color:#6e7072;font-size:12px;line-height:16px}
+.col-compet{width:240px}
+table{width:2252px}
